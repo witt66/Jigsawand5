@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>เกมจิ๊กซอว์ทายภาพ</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#071238;--bg2:#0d2160;--panel:#0e1c52;--line:#2c4aa8;--tile1:#2f6bff;--tile2:#1646d6;--gold:#ffc83d;--ink:#f2f6ff;--mute:#9fb2e6;--ok:#1fc16b;--no:#e5343d;--f:'Kanit','Noto Sans Thai','Sarabun',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{font-family:var(--f);color:var(--ink);background:radial-gradient(ellipse at 50% -10%,var(--bg2),var(--bg) 70%);overflow:hidden;padding:env(safe-area-inset-top,0px) env(safe-area-inset-bottom,0px)}
+button{font-family:inherit;cursor:pointer;border:0;color:inherit}
+input,textarea{font-family:inherit;color:var(--ink)}
+.screen{position:absolute;inset:0;display:none;padding:env(safe-area-inset-top,0px) 0 0}
+.screen.on{display:flex}
+/* setup */
+#setup{flex-direction:column;padding:18px 28px 16px;gap:12px;overflow:auto}
+.top{display:flex;gap:18px;align-items:stretch}
+.qbox{flex:1;display:flex;flex-direction:column;gap:6px}
+.lbl{font-size:15px;color:var(--mute)}
+#qtitle{width:100%;font-size:26px;font-weight:700;padding:10px 16px;border-radius:14px;border:2px solid var(--line);background:#0a1747;resize:none;height:64px}
+#qtitle:focus,.ans:focus,.tn:focus{outline:3px solid var(--gold);outline-offset:1px}
+.teams{width:34%;display:flex;flex-direction:column;gap:6px}
+.trow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tn{padding:8px 12px;border-radius:10px;border:2px solid var(--line);background:#0a1747;font-size:16px;min-width:0}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;flex:1;min-height:0}
+.card{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:0}
+.card h3{font-size:15px;font-weight:500;color:var(--mute)}
+.pic{position:relative;aspect-ratio:1;max-height:21vh;width:auto;align-self:center;aspect-ratio:1/1;border-radius:10px;border:2px dashed var(--line);display:grid;place-items:center;text-align:center;color:var(--mute);font-size:14px;overflow:hidden;background:#0a1747 center/cover no-repeat;cursor:pointer;height:21vh}
+.pic.has{border-style:solid;border-color:var(--gold);color:transparent}
+.pic input{display:none}
+.rm{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.65);font-size:16px;display:none}
+.pic.has .rm{display:block;color:#fff}
+.ans{padding:8px 10px;border-radius:10px;border:2px solid var(--line);background:#0a1747;font-size:17px;width:100%}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.hint{color:var(--mute);font-size:15px}
+.go{background:linear-gradient(#ffd75e,#ffb400);color:#2a1d00;font-weight:800;font-size:24px;padding:12px 44px;border-radius:999px;box-shadow:0 5px 0 #a87500}
+.go:active{transform:translateY(3px);box-shadow:0 2px 0 #a87500}
+.go:disabled{filter:grayscale(1);opacity:.45;cursor:not-allowed}
+/* game */
+#game{align-items:center;gap:3vw;padding:2vh 3vw}
+#board{--s:min(calc(100vh - 4vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)),52vw);width:var(--s);height:var(--s);flex:none;position:relative;border-radius:10px;overflow:hidden;background:#000 center/cover no-repeat;box-shadow:0 0 0 4px var(--gold),0 20px 60px rgba(0,0,0,.6)}
+#tiles{position:absolute;inset:0;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr)}
+.tile{border:1px solid rgba(255,255,255,.18);background:linear-gradient(145deg,var(--tile1),var(--tile2));font-size:calc(var(--s)/11);font-weight:700;color:#fff;transition:opacity .45s,transform .45s}
+.tile:active{filter:brightness(1.2)}
+.tile.gone{opacity:0;transform:scale(.55);pointer-events:none}
+#panel{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:center;gap:3.2vh;position:relative;padding-bottom:100px}
+#no{position:absolute;top:0;right:56px;font-size:15px;color:var(--mute)}
+#gq{font-size:clamp(26px,4vw,48px);font-weight:800;line-height:1.2;color:var(--gold);padding-right:70px}
+#slots{display:flex;flex-wrap:wrap;gap:8px}
+.slot{width:var(--sl,56px);height:calc(var(--sl,56px)*1.2);border-radius:10px;background:linear-gradient(145deg,var(--tile1),var(--tile2));display:grid;place-items:center;font-size:calc(var(--sl,56px)*.6);font-weight:700;border:2px solid rgba(255,255,255,.25)}
+#slots .slot{width:auto;min-width:130px;height:auto;padding:.1em .55em;font-size:clamp(40px,6vw,84px);line-height:1.35;text-align:center;border-radius:16px}
+.slot.open{background:#fff;color:#0a1747;animation:flip .5s both}
+@keyframes flip{from{transform:rotateX(90deg)}to{transform:none}}
+.ctl{display:flex;gap:16px;flex-wrap:wrap}
+.btn{font-size:clamp(22px,2.8vw,32px);font-weight:800;padding:14px 30px;border-radius:18px;flex:1;min-width:150px;box-shadow:0 6px 0 rgba(0,0,0,.35)}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.35)}
+.btn.no{background:var(--no)}.btn.ok{background:var(--ok)}.btn.next{background:var(--gold);color:#2a1d00}
+.btn.ghost{background:transparent;box-shadow:none;border:2px solid var(--line);font-size:16px;font-weight:500;padding:8px 16px;flex:none;min-width:0;color:var(--mute)}
+.hide{display:none!important}
+.award{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.chip{padding:8px 18px;border-radius:999px;border:2px solid var(--line);background:#0a1747;font-size:18px}
+.chip.sel{background:var(--gold);color:#2a1d00;border-color:var(--gold);font-weight:700}
+.score{display:flex;gap:10px;flex-wrap:wrap}
+.score span{background:#0a1747;border:2px solid var(--line);border-radius:12px;padding:6px 14px;font-size:18px}
+.score b{color:var(--gold);margin-left:6px}
+.quit{position:absolute;bottom:0;right:0}
+.dot{width:76px;height:76px;border-radius:50%;opacity:.6;border:0}
+.dot.no{background:var(--no)}.dot.ok{background:var(--ok)}
+.dot:hover,.dot:focus-visible{opacity:1}
+.dot:active{transform:scale(.9)}
+#ctl{position:absolute;left:0;bottom:0;gap:min(16vw,220px);flex-wrap:nowrap}
+#nx{position:absolute;left:0;bottom:0}
+.xbtn{position:absolute;top:calc(env(safe-area-inset-top,0px) + 10px);right:14px;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.1);border:2px solid var(--line);font-size:20px;color:var(--mute);z-index:3}
+.xbtn:active{background:var(--no);color:#fff}
+#quitm{position:fixed;inset:0;display:none;place-items:center;z-index:20;background:rgba(3,8,30,.85)}
+#quitm.on{display:grid}
+.mbox{background:var(--panel);border:3px solid var(--gold);border-radius:24px;padding:34px 40px;max-width:min(560px,90vw);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6);animation:pop .3s cubic-bezier(.2,1.6,.4,1) both}
+.mbox h2{font-size:clamp(26px,3.4vw,38px);font-weight:800;color:var(--gold);margin-bottom:10px}
+.mbox p{font-size:clamp(18px,2.2vw,24px);line-height:1.5;color:var(--ink);margin-bottom:26px}
+.mbox .ctl{justify-content:center}
+#menu{flex-direction:column;align-items:center;justify-content:center;gap:5vh;padding:20px;text-align:center}
+#menu h1{font-size:clamp(34px,5.5vw,72px);font-weight:800;color:var(--gold)}
+.mrow{display:flex;gap:3vw;width:min(1000px,92vw)}
+.mcard{flex:1;background:var(--panel);border:3px solid var(--line);border-radius:28px;padding:5vh 24px;display:flex;flex-direction:column;align-items:center;gap:1.5vh;transition:transform .15s,border-color .15s}
+.mcard:hover,.mcard:focus-visible{border-color:var(--gold);transform:translateY(-4px)}
+.mcard .ic{font-size:min(14vh,100px);line-height:1}
+.mcard b{font-size:clamp(26px,3.4vw,42px);font-weight:800}
+.mcard span{font-size:clamp(16px,1.9vw,22px);color:var(--mute)}
+.cl{display:none}
+#setup.clue .cl{display:flex;flex-direction:column;gap:5px}
+.ci{padding:6px 8px;border-radius:8px;border:2px solid var(--line);background:#0a1747;font-size:14px;width:100%;min-width:0}
+.ci:focus{outline:3px solid var(--gold);outline-offset:1px}
+#setup.clue .grid{flex:none}
+#setup.clue .pic{height:14vh;max-height:none}
+#setup .bar{position:sticky;bottom:0;background:var(--bg);padding:8px 0}
+#bcol{flex:none;display:flex;flex-direction:column;align-items:center;gap:2vh}
+#bans{display:none;width:100%;justify-content:center}
+#clues:empty{display:none}
+#qm{display:none;position:absolute;inset:0;place-items:center;font-size:calc(var(--s)*.55);font-weight:800;color:#fff;background:linear-gradient(145deg,var(--tile1),var(--tile2));transition:opacity .6s}
+#qm.gone{opacity:0;pointer-events:none}
+#game.clue{flex-direction:row-reverse;--cs:min(68vh,46vw)}
+#game.clue #board{--s:var(--cs)}
+#game.clue #bcol{width:var(--cs)}
+#game.clue #bans{display:flex}
+#game.clue #qm{display:grid}
+#game.clue #tiles{display:none}
+#game.clue .xbtn{right:auto;left:14px}
+#game.clue #gq{font-size:clamp(22px,3vw,38px)}
+#bans #slots{width:100%}
+#bans .slot{width:100%;min-width:0;font-size:clamp(30px,4.4vw,64px)}
+#clues{display:flex;flex-direction:column;gap:1.4vh}
+.clue-b{display:flex;align-items:center;gap:14px;text-align:left;padding:1.2vh 18px;border-radius:16px;background:linear-gradient(145deg,var(--tile1),var(--tile2));font-size:clamp(20px,2.6vw,32px);font-weight:700;min-height:8vh;border:2px solid rgba(255,255,255,.25);color:#fff}
+.clue-b .n{flex:none;width:2em;height:2em;border-radius:50%;background:var(--gold);color:#2a1d00;display:grid;place-items:center}
+.clue-b .t{flex:1;min-width:0}
+.clue-b.open{background:#fff;color:#0a1747}
+.clue-b:disabled{opacity:.35}
+.rt{display:flex;gap:14px;align-items:center}
+.sv{background:transparent;border:3px solid var(--gold);color:var(--gold);font-weight:700;font-size:22px;padding:10px 30px;border-radius:999px}
+.sv:disabled{opacity:.4;cursor:not-allowed}
+.sv:active{transform:translateY(2px)}
+.srow{width:min(1000px,92vw)}
+.sbtn{flex:1;background:transparent;border:2px solid var(--line);border-radius:18px;padding:16px;font-size:clamp(18px,2.2vw,26px);font-weight:600;display:flex;justify-content:center;gap:10px;align-items:center}
+.sbtn:hover,.sbtn:focus-visible{border-color:var(--gold);color:var(--gold)}
+#saved{flex-direction:column;padding:18px 28px;gap:16px;overflow:auto}
+.shead{display:flex;align-items:center;gap:18px}
+.shead h1{font-size:clamp(26px,3.4vw,44px);color:var(--gold);font-weight:800}
+#slist{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;align-content:start}
+.sc{background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:12px;display:flex;gap:14px}
+.sc .th{flex:none;width:100px;height:100px;border-radius:10px;background:#0a1747 center/cover no-repeat}
+.sc .inf{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.sc .nm2{font-size:22px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc .meta{font-size:14px;color:var(--mute)}
+.sc .acts{display:flex;gap:8px;margin-top:auto}
+.sc .acts button{padding:8px 16px;border-radius:10px;font-size:16px;font-weight:600}
+.a-play{background:var(--ok)}.a-edit{background:var(--tile2)}
+.a-play:disabled{opacity:.35;cursor:not-allowed}
+.a-del{background:transparent;border:2px solid var(--line)!important;color:var(--mute)}
+.a-del.sure{background:var(--no);color:#fff;border-color:var(--no)!important}
+.empty{grid-column:1/-1;text-align:center;color:var(--mute);font-size:20px;line-height:1.6;padding:10vh 0}
+#savem{position:fixed;inset:0;display:none;place-items:center;z-index:20;background:rgba(3,8,30,.85)}
+#savem.on{display:grid}
+.nm{width:100%;font-size:22px;padding:10px 14px;border-radius:12px;border:2px solid var(--line);background:#0a1747;margin-bottom:22px}
+.nm:focus{outline:3px solid var(--gold);outline-offset:1px}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:var(--gold);color:#2a1d00;font-weight:700;padding:12px 26px;border-radius:999px;z-index:30;opacity:0;pointer-events:none;transition:opacity .25s}
+#toast.on{opacity:1}
+/* overlay */
+#ov{position:fixed;inset:0;display:none;place-items:center;z-index:9;background:rgba(3,8,30,.82);text-align:center}
+#ov.on{display:grid}
+#ovs{font-size:min(70vh,60vw);line-height:1;font-weight:800;animation:pop .45s cubic-bezier(.2,1.6,.4,1) both}
+#ov.bad #ovs{color:var(--no);text-shadow:0 0 60px rgba(229,52,61,.7)}
+#ov.good #ovs{color:var(--ok);text-shadow:0 0 60px rgba(31,193,107,.7)}
+#ovt{font-size:clamp(28px,5vw,60px);font-weight:800;margin-top:-4vh}
+@keyframes pop{from{transform:scale(.2);opacity:0}to{transform:none;opacity:1}}
+/* end */
+#end{flex-direction:column;align-items:center;justify-content:center;gap:2.5vh;text-align:center;padding:20px}
+#end .tro{font-size:min(22vh,160px);line-height:1}
+#end h1{font-size:clamp(30px,5vw,64px);font-weight:800;color:var(--gold)}
+#end h2{font-size:clamp(22px,3vw,36px);font-weight:500}
+#end .row{display:flex;gap:14px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<section id="menu" class="screen on">
+  <h1>เลือกเกม</h1>
+  <div class="mrow">
+    <button class="mcard" id="mPic"><div class="ic">🧩</div><b>เกมทายภาพ</b><span>เปิดแผ่นป้ายทีละช่อง เผยภาพปริศนา</span></button>
+    <button class="mcard" id="mClue"><div class="ic">💡</div><b>เกมทายคุณสมบัติ</b><span>เปิดคำใบ้ 5 ข้อ แล้วทายว่าคืออะไร</span></button>
+  </div>
+  <div class="mrow srow">
+    <button class="sbtn" id="mSavedP">📁 เกมทายภาพที่บันทึกไว้ <span id="cP"></span></button>
+    <button class="sbtn" id="mSavedC">📁 เกมทายคุณสมบัติที่บันทึกไว้ <span id="cC"></span></button>
+  </div>
+</section>
+
+<section id="saved" class="screen">
+  <div class="shead"><button class="btn ghost" id="sBack">‹ กลับ</button><h1 id="sTitle"></h1></div>
+  <div id="slist"></div>
+</section>
+
+<section id="setup" class="screen">
+  <div class="top">
+    <div class="qbox">
+      <label class="lbl" for="qtitle"><span id="sh"></span>: โจทย์รวม (ใช้กับทุกข้อ)</label>
+      <textarea id="qtitle" placeholder="เช่น นี่คือกีฬาอะไร"></textarea>
+    </div>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="bar">
+    <button class="btn ghost" id="bMenu">‹ เปลี่ยนเกม</button>
+    <div class="hint" id="cnt">ใส่ภาพและคำตอบให้ครบอย่างน้อย 1 ข้อ แล้วเริ่มเกมได้เลย (สูงสุด 10 ข้อ)</div>
+    <div class="rt"><button class="sv" id="bSave" disabled>บันทึกโจทย์</button><button class="go" id="start" disabled>เริ่มเกม</button></div>
+  </div>
+</section>
+
+<section id="game" class="screen">
+  <button class="xbtn" id="bX" aria-label="ปิดเกม">✕</button>
+  <div id="bcol"><div id="board"><div id="tiles"></div><div id="qm">?</div></div><div id="bans"></div></div>
+  <div id="panel">
+    <div id="no"></div>
+    <div id="gq"></div>
+    <div id="clues"></div>
+    <div id="slots"></div>
+    <div class="ctl" id="ctl">
+      <button class="dot no" id="bNo" aria-label="ตอบผิด" title="ตอบผิด"></button>
+      <button class="dot ok" id="bOk" aria-label="ตอบถูก" title="ตอบถูก"></button>
+    </div>
+    <div class="ctl hide" id="nx"><button class="btn next" id="bNext">ข้อต่อไป</button></div>
+    <button class="btn ghost" id="bGive">เปิดเฉลย (ไม่มีใครตอบได้)</button>
+    <button class="btn ghost quit" id="bQuit">ออก</button>
+  </div>
+</section>
+
+<section id="end" class="screen">
+  <div class="tro">🏆</div>
+  <h1 id="eh">ยินดีกับทีมที่ชนะ</h1>
+  <div class="row">
+    <button class="btn ghost" id="bAgain">เล่นชุดนี้อีกครั้ง</button>
+    <button class="btn ghost" id="bEdit">กลับไปแก้โจทย์</button>
+  </div>
+</section>
+
+<div id="savem" role="dialog" aria-modal="true" aria-labelledby="svh">
+  <div class="mbox">
+    <h2 id="svh">บันทึกชุดโจทย์</h2>
+    <input class="nm" id="svName" maxlength="60" placeholder="ตั้งชื่อชุด เช่น กีฬา ชุดที่ 1" aria-label="ชื่อชุดโจทย์">
+    <div class="ctl">
+      <button class="btn ghost" id="svCancel">ยกเลิก</button>
+      <button class="btn ghost hide" id="svNew">บันทึกเป็นชุดใหม่</button>
+      <button class="btn ok" id="svOk">บันทึก</button>
+    </div>
+  </div>
+</div>
+<div id="toast" role="status"></div>
+<div id="quitm" role="dialog" aria-modal="true" aria-labelledby="qh">
+  <div class="mbox">
+    <h2 id="qh">จะออกจากเกม?</h2>
+    <p>การออกจากเกมจะทำให้โจทย์ที่ยังไม่ได้บันทึกหายไป</p>
+    <div class="ctl">
+      <button class="btn no" id="qClose">ปิดเกม</button>
+      <button class="btn ok" id="qStay">เล่นต่อ</button>
+    </div>
+  </div>
+</div>
+<div id="ov"><div><div id="ovs"></div><div id="ovt"></div></div></div>
+
+<script>
+(function(){
+var N=10, mode='pic', setupMode=null, curId=null, curName='', items=[], teams=[], playList=[], idx=0, solved=false, award={}, ovTimer=null, actx=null;
+var $=function(s){return document.querySelector(s)};
+function show(id){document.querySelectorAll('.screen').forEach(function(e){e.classList.toggle('on',e.id===id)})}
+
+function pick(m){mode=m;if(setupMode!==m){resetSetup();setupMode=m}$('#setup').classList.toggle('clue',m==='clue');$('#sh').textContent=m==='pic'?'เกมทายภาพ':'เกมทายคุณสมบัติ';check();show('setup')}
+$('#mPic').onclick=function(){pick('pic')};
+$('#mClue').onclick=function(){pick('clue')};
+$('#bMenu').onclick=function(){refreshCounts();show('menu')};
+/* ---------- setup ---------- */
+var grid=$('#grid');
+for(var i=0;i<N;i++){items.push({img:'',ans:'',cl:['','','','','']});(function(i){
+  var c=document.createElement('div');c.className='card';
+  c.innerHTML='<h3>ข้อ '+(i+1)+'</h3><label class="pic" id="p'+i+'">แตะเพื่อเลือกภาพ<input type="file" accept="image/*"><button type="button" class="rm" aria-label="ลบภาพ">×</button></label><input class="ans" placeholder="คำตอบ" aria-label="คำตอบข้อ '+(i+1)+'"><div class="cls cl">'+[1,2,3,4,5].map(function(k){return '<input class="ci" placeholder="คุณสมบัติข้อ '+k+'" aria-label="คุณสมบัติข้อ '+k+' ของข้อ '+(i+1)+'" maxlength="80">'}).join('')+'</div>';
+  grid.appendChild(c);
+  var pic=c.querySelector('.pic'),f=c.querySelector('input[type=file]'),a=c.querySelector('.ans');
+  f.onchange=function(){if(f.files[0])load(f.files[0],i,pic);f.value=''};
+  c.querySelector('.rm').onclick=function(e){e.preventDefault();e.stopPropagation();items[i].img='';pic.style.backgroundImage='';pic.classList.remove('has');check()};
+  a.oninput=function(){items[i].ans=a.value;check()};
+  c.querySelectorAll('.ci').forEach(function(e,k){e.oninput=function(){items[i].cl[k]=e.value;check()}});
+})(i)}
+function load(file,i,pic){
+  var url=URL.createObjectURL(file),im=new Image();
+  im.onload=function(){
+    var s=Math.min(im.width,im.height),cv=document.createElement('canvas');cv.width=cv.height=900;
+    cv.getContext('2d').drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,900,900);
+    items[i].img=cv.toDataURL('image/jpeg',.85);URL.revokeObjectURL(url);
+    pic.style.backgroundImage='url('+items[i].img+')';pic.classList.add('has');check();
+  };
+  im.src=url;
+}
+function ready(){return items.filter(function(x){return x.img&&x.ans.trim()&&(mode==='pic'||x.cl.some(function(c){return c.trim()}))})}
+function check(){var n=ready().length;$('#start').disabled=!n;$('#bSave').disabled=!items.some(function(x){return x.img||x.ans.trim()||x.cl.some(function(c){return c.trim()})});
+  $('#cnt').textContent=n?'พร้อมเล่น '+n+' ข้อ':(mode==='pic'?'ใส่ภาพและคำตอบให้ครบอย่างน้อย 1 ข้อ แล้วเริ่มเกมได้เลย (สูงสุด 10 ข้อ)':'ใส่ภาพ คำตอบ และคุณสมบัติอย่างน้อย 1 ข้อ แล้วเริ่มเกมได้เลย (สูงสุด 10 ข้อ)')}
+$('#start').onclick=function(){
+  playList=ready();
+  idx=0;startAudio();$('#game').classList.toggle('clue',mode==='clue');show('game');loadQ();
+};
+
+/* ---------- saved sets (IndexedDB) ---------- */
+var dbp=null;
+function dbOpen(){if(!dbp)dbp=new Promise(function(res,rej){try{var r=indexedDB.open('jigsawQuiz',1);r.onupgradeneeded=function(){r.result.createObjectStore('sets',{keyPath:'id'})};r.onsuccess=function(){res(r.result)};r.onerror=function(){rej(r.error)}}catch(e){rej(e)}});return dbp}
+function dbTx(m,fn){return dbOpen().then(function(db){return new Promise(function(res,rej){var t=db.transaction('sets',m),out=fn(t.objectStore('sets'));t.oncomplete=function(){res(out&&out.result)};t.onerror=t.onabort=function(){rej(t.error)}})})}
+function dbPut(o){return dbTx('readwrite',function(s){return s.put(o)})}
+function dbDel(id){return dbTx('readwrite',function(s){return s.delete(id)})}
+function dbAll(){return dbTx('readonly',function(s){return s.getAll()})}
+var toastT=null;
+function toast(t){var e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toastT);toastT=setTimeout(function(){e.classList.remove('on')},2200)}
+function refreshCounts(){dbAll().then(function(all){['pic','clue'].forEach(function(m,i){var n=all.filter(function(s){return s.mode===m}).length;$(i?'#cC':'#cP').textContent=n?'('+n+')':''})}).catch(function(){})}
+function syncDom(){Array.prototype.forEach.call(grid.children,function(c,i){var x=items[i],p=c.querySelector('.pic');p.style.backgroundImage=x.img?'url('+x.img+')':'';p.classList.toggle('has',!!x.img);c.querySelector('.ans').value=x.ans;c.querySelectorAll('.ci').forEach(function(e,k){e.value=x.cl[k]})})}
+function resetSetup(){for(var i=0;i<N;i++)items[i]={img:'',ans:'',cl:['','','','','']};$('#qtitle').value='';curId=null;curName='';syncDom();check()}
+function fillSetup(s){
+  for(var i=0;i<N;i++){var x=s.items[i]||{};items[i]={img:x.img||'',ans:x.ans||'',cl:(x.cl||[]).concat(['','','','','']).slice(0,5)}}
+  mode=s.mode;setupMode=s.mode;curId=s.id;curName=s.name;
+  $('#qtitle').value=s.title||'';$('#setup').classList.toggle('clue',mode==='clue');
+  $('#sh').textContent=mode==='pic'?'เกมทายภาพ':'เกมทายคุณสมบัติ';syncDom();check();
+}
+function doSave(){
+  var name=$('#svName').value.trim()||'ชุดไม่มีชื่อ',id=curId||('s'+Date.now());
+  var rec={id:id,mode:mode,name:name,title:$('#qtitle').value,items:JSON.parse(JSON.stringify(items)),ts:Date.now()};
+  dbPut(rec).then(function(){curId=id;curName=name;$('#savem').classList.remove('on');toast('บันทึกโจทย์แล้ว');refreshCounts()}).catch(function(){$('#savem').classList.remove('on');toast('บันทึกไม่ได้ในเบราว์เซอร์นี้')});
+}
+$('#bSave').onclick=function(){$('#svName').value=curName||$('#qtitle').value.trim();$('#svNew').classList.toggle('hide',!curId);$('#savem').classList.add('on');$('#svName').focus()};
+$('#svCancel').onclick=function(){$('#savem').classList.remove('on')};
+$('#svOk').onclick=doSave;
+$('#svNew').onclick=function(){curId=null;doSave()};
+$('#svName').onkeydown=function(e){if(e.key==='Enter')doSave()};
+document.addEventListener('keydown',function(e){if(e.key==='Escape')$('#savem').classList.remove('on')});
+var savedMode='pic';
+function openSaved(m){savedMode=m;$('#sTitle').textContent=m==='pic'?'เกมทายภาพที่บันทึกไว้':'เกมทายคุณสมบัติที่บันทึกไว้';renderSaved();show('saved')}
+function renderSaved(){
+  var L=$('#slist');L.innerHTML='';
+  dbAll().then(function(all){
+    var rows=all.filter(function(s){return s.mode===savedMode}).sort(function(a,b){return b.ts-a.ts});
+    if(!rows.length){L.innerHTML='<div class="empty">ยังไม่มีโจทย์ที่บันทึกไว้<br>สร้างโจทย์แล้วกด “บันทึกโจทย์” ในหน้าสร้างโจทย์</div>';return}
+    rows.forEach(function(s){
+      var c=document.createElement('div');c.className='sc';
+      var first=s.items.filter(function(x){return x&&x.img})[0];
+      var th=document.createElement('div');th.className='th';if(first)th.style.backgroundImage='url('+first.img+')';
+      var inf=document.createElement('div');inf.className='inf';
+      var nm=document.createElement('div');nm.className='nm2';nm.textContent=s.name;
+      var n=s.items.filter(function(x){return x&&x.img&&x.ans&&x.ans.trim()&&(s.mode==='pic'||(x.cl||[]).some(function(k){return k.trim()}))}).length;
+      var mt=document.createElement('div');mt.className='meta';mt.textContent='พร้อมเล่น '+n+' ข้อ, บันทึกเมื่อ '+new Date(s.ts).toLocaleDateString('th-TH');
+      var ac=document.createElement('div');ac.className='acts';
+      var bp=document.createElement('button');bp.className='a-play';bp.textContent='เล่น';bp.disabled=!n;bp.onclick=function(){fillSetup(s);$('#start').onclick()};
+      var be=document.createElement('button');be.className='a-edit';be.textContent='แก้ไข';be.onclick=function(){fillSetup(s);show('setup')};
+      var bd=document.createElement('button');bd.className='a-del';bd.textContent='ลบ';
+      bd.onclick=function(){
+        if(!bd.classList.contains('sure')){bd.classList.add('sure');bd.textContent='ยืนยันลบ?';setTimeout(function(){bd.classList.remove('sure');bd.textContent='ลบ'},3000);return}
+        dbDel(s.id).then(function(){if(curId===s.id)curId=null;renderSaved();refreshCounts()}).catch(function(){toast('ลบไม่ได้')});
+      };
+      ac.appendChild(bp);ac.appendChild(be);ac.appendChild(bd);
+      inf.appendChild(nm);inf.appendChild(mt);inf.appendChild(ac);
+      c.appendChild(th);c.appendChild(inf);L.appendChild(c);
+    });
+  }).catch(function(){L.innerHTML='<div class="empty">เปิดที่เก็บข้อมูลของเบราว์เซอร์นี้ไม่ได้</div>'});
+}
+$('#mSavedP').onclick=function(){openSaved('pic')};
+$('#mSavedC').onclick=function(){openSaved('clue')};
+$('#sBack').onclick=function(){refreshCounts();show('menu')};
+refreshCounts();
+/* ---------- game ---------- */
+function seg(s){
+  try{return Array.from(new Intl.Segmenter('th',{granularity:'grapheme'}).segment(s.trim()),function(x){return x.segment})}
+  catch(e){return Array.from(s.trim())}
+}
+function loadQ(){
+  var q=playList[idx];solved=false;
+  $('#board').style.backgroundImage='url('+q.img+')';
+  var t=$('#tiles');t.innerHTML='';
+  for(var i=1;i<=25;i++){(function(i){var b=document.createElement('button');b.className='tile';b.textContent=i;b.setAttribute('aria-label','แผ่นที่ '+i);
+    b.onclick=function(){if(!solved)b.classList.add('gone')};t.appendChild(b)})(i)}
+  $('#no').textContent='ข้อ '+(idx+1)+'/'+playList.length;
+  $('#gq').textContent=$('#qtitle').value.trim()||'นี่คืออะไร';
+  var sl=$('#slots');sl.innerHTML='';
+  if(mode==='clue')$('#bans').appendChild(sl);else $('#panel').insertBefore(sl,$('#ctl'));
+  $('#qm').classList.remove('gone');buildClues(q);
+  var d=document.createElement('div');d.className='slot';d.textContent='?';d.dataset.c=q.ans.trim();sl.appendChild(d);
+  $('#ctl').classList.remove('hide');$('#bGive').classList.remove('hide');
+  $('#nx').classList.add('hide');
+  $('#bNext').textContent=idx===playList.length-1?'จบเกม ดูผล':'ข้อต่อไป';
+}
+function buildClues(q){
+  var c=$('#clues');c.innerHTML='';if(mode!=='clue')return;
+  q.cl.forEach(function(txt,k){
+    var b=document.createElement('button'),n=document.createElement('span'),t=document.createElement('span');
+    b.className='clue-b';n.className='n';n.textContent=k+1;t.className='t';b.appendChild(n);b.appendChild(t);
+    txt=txt.trim();
+    if(!txt){b.disabled=true;t.textContent='—'}
+    else{t.textContent='?';b.dataset.t=txt;b.onclick=function(){if(!solved)openClue(b)}}
+    c.appendChild(b);
+  });
+}
+function openClue(b){b.classList.add('open');b.querySelector('.t').textContent=b.dataset.t}
+function reveal(){
+  solved=true;
+  $('#qm').classList.add('gone');
+  document.querySelectorAll('.clue-b').forEach(function(b){if(b.dataset.t)openClue(b)});
+  document.querySelectorAll('.tile').forEach(function(t){t.classList.add('gone')});
+  document.querySelectorAll('.slot').forEach(function(s){s.textContent=s.dataset.c;s.classList.add('open')});
+  $('#ctl').classList.add('hide');$('#bGive').classList.add('hide');
+  $('#nx').classList.remove('hide');
+}
+function buildAward(){
+  var a=$('#award');a.innerHTML='<span class="lbl">ทีมที่ได้คะแนน</span>';
+  teams.forEach(function(n,i){var c=document.createElement('button');c.className='chip'+(award[idx]===i?' sel':'');c.textContent=n;
+    c.onclick=function(){award[idx]=(award[idx]===i?undefined:i);buildAward();renderScore()};a.appendChild(c)});
+  $('#after').classList.remove('hide');
+}
+function scores(){var s=teams.map(function(){return 0});Object.keys(award).forEach(function(k){if(award[k]!==undefined)s[award[k]]++});return s}
+function scoreHTML(el){var s=scores();el.innerHTML='';teams.forEach(function(n,i){var x=document.createElement('span');x.textContent=n;var b=document.createElement('b');b.textContent=s[i];x.appendChild(b);el.appendChild(x)})}
+function renderScore(){scoreHTML($('#score'))}
+
+$('#bNo').onclick=function(){if(solved)return;startAudio();flash('bad','✗','ผิด');sfx(false)};
+$('#bOk').onclick=function(){if(solved)return;startAudio();reveal();flash('good','✓','ถูกต้อง!');sfx(true)};
+$('#bGive').onclick=function(){if(solved)return;reveal()};
+$('#bNext').onclick=function(){if(idx<playList.length-1){idx++;loadQ()}else finish()};
+function openQuit(){$('#quitm').classList.add('on');$('#qStay').focus()}
+function closeQuit(){$('#quitm').classList.remove('on')}
+$('#bQuit').onclick=openQuit;
+$('#bX').onclick=openQuit;
+$('#qStay').onclick=closeQuit;
+$('#qClose').onclick=function(){window.onbeforeunload=null;location.reload()};
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){if($('#quitm').classList.contains('on'))closeQuit();else if($('#game').classList.contains('on'))openQuit()}});
+window.onbeforeunload=function(e){if($('#game').classList.contains('on')){e.preventDefault();e.returnValue='';return ''}};
+$('#ov').onclick=hideOv;
+
+function flash(kind,sym,txt){
+  var o=$('#ov');o.className='on '+kind;$('#ovs').textContent=sym;$('#ovt').textContent=txt;
+  clearTimeout(ovTimer);ovTimer=setTimeout(hideOv,5000);
+}
+function hideOv(){clearTimeout(ovTimer);$('#ov').className=''}
+
+/* ---------- end ---------- */
+function finish(){show('end')}
+$('#bAgain').onclick=function(){idx=0;show('game');loadQ()};
+$('#bEdit').onclick=function(){show('setup')};
+
+/* ---------- sound ---------- */
+function startAudio(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume()}catch(e){}}
+function tone(f,t0,d,type,v){if(!actx)return;var o=actx.createOscillator(),g=actx.createGain();o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(v,actx.currentTime+t0);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+t0+d);
+  o.connect(g);g.connect(actx.destination);o.start(actx.currentTime+t0);o.stop(actx.currentTime+t0+d+.05)}
+function sfx(ok){
+  if(ok){[523,659,784,1046].forEach(function(f,i){tone(f,i*.12,.35,'triangle',.25)})}
+  else{tone(160,0,.35,'sawtooth',.3);tone(110,.38,.55,'sawtooth',.3)}
+}
+})();
+</script>
+</body>
+</html>
